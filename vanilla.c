@@ -34,27 +34,35 @@ int main() {
     // Escuta na porta especificada
     listen(sockfd, 5);
 
-    // Aceita uma nova conexão
-    clilen = sizeof(cli_addr);
-    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-    if (newsockfd < 0) {
-        perror("Erro ao aceitar conexão");
-        exit(1);
+    while (1) {
+        // Aceita uma nova conexão
+        clilen = sizeof(cli_addr);
+        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if (newsockfd < 0) {
+            perror("Erro ao aceitar conexão");
+            exit(1);
+        }
+
+        while (1) {
+            // Lê a mensagem do cliente
+            bzero(buffer, sizeof(buffer));
+            n = read(newsockfd, buffer, sizeof(buffer));
+            if (n < 0) {
+                perror("Erro ao ler mensagem do cliente");
+                exit(1);
+            } else if (n == 0) {
+                // Conexão encerrada pelo cliente
+                break;
+            }
+
+            // Imprime a mensagem do cliente na tela
+            printf("Mensagem recebida: %s\n", buffer);
+        }
+
+        // Fecha a conexão
+        close(newsockfd);
     }
 
-    // Lê a mensagem do cliente
-    bzero(buffer, sizeof(buffer));
-    n = read(newsockfd, buffer, sizeof(buffer));
-    if (n < 0) {
-        perror("Erro ao ler mensagem do cliente");
-        exit(1);
-    }
-
-    // Imprime a mensagem do cliente na tela
-    printf("Mensagem recebida: %s\n", buffer);
-
-    // Fecha a conexão
-    close(newsockfd);
     close(sockfd);
 
     return 0;
