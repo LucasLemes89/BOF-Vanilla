@@ -1,69 +1,75 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #define PORT 5555
 
-int main() {
-    int sockfd, newsockfd, n;
-    socklen_t clilen;
+int main(void)
+{
+    int sockfd, connfd;
+    struct sockaddr_in servaddr, cli;
     char buffer[10];
-    struct sockaddr_in serv_addr, cli_addr;
 
-    // Cria o socket
+    // Criação do socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        perror("Erro ao abrir socket");
-        exit(1);
+    if (sockfd == -1) {
+        printf("Erro na criação do socket.\n");
+        exit(0);
+    } else {
+        printf("Socket criado com sucesso.\n");
     }
 
-    // Configura o endereço do servidor
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(PORT);
+    memset(&servaddr, 0, sizeof(servaddr));
 
-    // Associa o socket ao endereço do servidor
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("Erro ao fazer bind");
-        exit(1);
+    // Configuração do endereço do servidor
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(PORT);
+
+    // Ligação do socket com o endereço do servidor
+    if ((bind(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) != 0) {
+        printf("Erro na ligação do socket.\n");
+        exit(0);
+    } else {
+        printf("Socket ligado com sucesso.\n");
     }
 
-    // Escuta na porta especificada
-    listen(sockfd, 5);
+    // Servidor aguardando conexões
+    if ((listen(sockfd, 5)) != 0) {
+        printf("Erro na escuta do socket.\n");
+        exit(0);
+    } else {
+        printf("Servidor aguardando conexões...\n");
+    }
 
+    // Aceitando conexões
     while (1) {
-        // Aceita uma nova conexão
-        clilen = sizeof(cli_addr);
-        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd < 0) {
-            perror("Erro ao aceitar conexão");
-            exit(1);
+        int len = sizeof(cli);
+
+        connfd = accept(sockfd, (struct sockaddr*)&cli, &len);
+        if (connfd < 0) {
+            printf("Erro na aceitação da conexão.\n");
+            exit(0);
+        } else {
+            printf("Conexão aceita do endereço %s e porta %d.\n",
+                    inet_ntoa(cli.sin_addr), ntohs(cli.sin_port));
         }
 
-        while (1) {
-            // Lê a mensagem do cliente
-            bzero(buffer, sizeof(buffer));
-            n = read(newsockfd, buffer, sizeof(buffer));
-            if (n < 0) {
-                perror("Erro ao ler mensagem do cliente");
-                exit(1);
-            } else if (n == 0) {
-                // Conexão encerrada pelo cliente
-                break;
-            }
+        // Mensagem de boas vindas para o cliente
+        write(connfd, "Insira até 10 bytes de dados:\n", 31);
 
-            // Imprime a mensagem do cliente na tela
-            printf("Mensagem recebida: %s\n", buffer);
-        }
+        // Recebimento dos dados do cliente
+        read(connfd, buffer, sizeof(buffer));
 
-        // Fecha a conexão
-        close(newsockfd);
+        // Exibição dos dados recebidos
+        printf("Dados recebidos: %s\n", buffer);
+
+        // Fechamento da conexão
+        close(connfd);
     }
-
-    close(sockfd);
 
     return 0;
 }
